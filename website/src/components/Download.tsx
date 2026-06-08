@@ -59,7 +59,7 @@ export default function DownloadSection() {
             {/* Main Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
               <a
-                href="https://github.com/alokkumar2510/alok_jarvis_os/releases/download/v0.1.0/alok_jarvis_os_0.1.0_x64-setup.exe"
+                href="/alok_jarvis_os_0.1.0_x64-setup.exe"
                 className="flex-1 py-4 px-6 rounded-xl bg-gradient-to-r from-accent-electric to-accent-cyan text-bg-primary font-medium flex items-center justify-center gap-2.5 active:scale-98 transition-transform shadow-glow-cyan"
               >
                 <Download className="w-5 h-5" />
