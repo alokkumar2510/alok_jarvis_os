@@ -39,8 +39,8 @@ export default function Footer() {
           <div className="flex flex-col gap-3">
             <span className="text-xs font-mono tracking-wider text-text-muted uppercase font-semibold">LEGAL & DOMAIN</span>
             <span className="text-text-secondary">alokkumarsahu.in</span>
-            <a href="#" className="text-text-secondary hover:text-accent-electric transition-colors">Privacy Policy</a>
-            <a href="#" className="text-text-secondary hover:text-accent-electric transition-colors">Terms of Service</a>
+            <a href="/privacy" className="text-text-secondary hover:text-accent-electric transition-colors">Privacy Policy</a>
+            <a href="/terms" className="text-text-secondary hover:text-accent-electric transition-colors">Terms of Service</a>
           </div>
         </div>
 
