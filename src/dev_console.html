@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Diagnostics and logging developer console for JARVIS OS.">
+  <title>JARVIS Developer Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-glass: rgba(15, 23, 42, 0.65);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-purple: #c084fc;
+      --accent-blue: #60a5fa;
+      --accent-cyan: #22d3ee;
+      --accent-green: #34d399;
+      --accent-red: #f87171;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Glass Header */
+    header {
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .title-area h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .title-area p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .perf-grid {
+      display: flex;
+      gap: 16px;
+    }
+
+    .perf-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 6px 12px;
+      min-width: 100px;
+      text-align: center;
+    }
+
+    .perf-card .label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .perf-card .val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      margin-top: 2px;
+    }
+
+    /* Main Content */
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Tabs Sidebar */
+    .sidebar {
+      width: 200px;
+      background: rgba(15, 23, 4 slate, 0.3);
+      border-right: 1px solid var(--border-color);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      color: var(--text-muted);
+      padding: 10px 14px;
+      text-align: left;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(192, 132, 252, 0.15), rgba(96, 165, 250, 0.15));
+      border: 1px solid rgba(192, 132, 252, 0.3);
+      color: var(--text-main);
+    }
+
+    .tab-btn .badge {
+      margin-left: auto;
+      background: rgba(255, 255, 255, 0.1);
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Content Area */
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: rgba(10, 15, 30, 0.4);
+    }
+
+    .filter-bar {
+      padding: 12px 20px;
+      background: rgba(255, 255, 255, 0.01);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .filter-bar input {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.8rem;
+      width: 250px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .filter-bar input:focus {
+      border-color: var(--accent-purple);
+    }
+
+    .filter-bar .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .filter-bar button {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-bar button:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+    }
+
+    /* Logs Output Screen */
+    .log-viewport {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+
+    .log-line {
+      display: flex;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+    }
+
+    .log-line .time {
+      color: #64748b;
+      min-width: 90px;
+    }
+
+    .log-line .level {
+      min-width: 70px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .log-line.info .level { color: var(--accent-cyan); }
+    .log-line.warn .level { color: var(--accent-purple); }
+    .log-line.error .level { color: var(--accent-red); }
+
+    .log-line .msg {
+      flex: 1;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Diagnostics panel inside logs view */
+    .metrics-view {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .metric-panel {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .metric-panel h3 {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+
+    .metric-panel .value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .metric-panel .desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-area">
+      <h1>JARVIS OS Developer Console</h1>
+      <p>Real-Time Engine Diagnostics & Logs</p>
+    </div>
+    <div class="perf-grid">
+      <div class="perf-card">
+        <div class="label">CPU Usage</div>
+        <div class="val" id="top-cpu">0.0 %</div>
+      </div>
+      <div class="perf-card">
+        <div class="label">RAM Usage</div>
+        <div class="val" id="top-ram">-- MB</div>
+      </div>
+      <div class="perf-card">
+        <div class="label">Overlay State</div>
+        <div class="val" id="top-state" style="color: var(--accent-green)">Idle</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <aside class="sidebar">
+      <button class="tab-btn active" id="btn-tab-voice" data-tab="voice">Voice <span class="badge" id="badge-voice">0</span></button>
+      <button class="tab-btn" id="btn-tab-wakeword" data-tab="wakeword">Wake Word <span class="badge" id="badge-wakeword">0</span></button>
+      <button class="tab-btn" id="btn-tab-intent" data-tab="intent">Intent <span class="badge" id="badge-intent">0</span></button>
+      <button class="tab-btn" id="btn-tab-actions" data-tab="actions">Actions <span class="badge" id="badge-actions">0</span></button>
+      <button class="tab-btn" id="btn-tab-memory" data-tab="memory">Memory <span class="badge" id="badge-memory">0</span></button>
+      <button class="tab-btn" id="btn-tab-planner" data-tab="planner">Planner <span class="badge" id="badge-planner">0</span></button>
+      <button class="tab-btn" id="btn-tab-groq" data-tab="groq">Groq <span class="badge" id="badge-groq">0</span></button>
+      <button class="tab-btn" id="btn-tab-metrics" data-tab="metrics" style="margin-top: auto; border-top: 1px solid var(--border-color); border-radius: 0; padding-top: 15px;">Metrics</button>
+    </aside>
+
+    <main class="content-area">
+      <div class="filter-bar" id="filter-container">
+        <input type="text" id="log-search" placeholder="Search logs in active tab..." />
+        <div class="actions">
+          <button id="clear-logs-btn">Clear Logs</button>
+        </div>
+      </div>
+
+      <!-- Logs viewport -->
+      <div class="log-viewport" id="logs-list">
+        <!-- Log lines added here dynamically -->
+      </div>
+
+      <!-- Metrics panel (hidden by default) -->
+      <div class="metrics-view" id="metrics-panel" style="display: none;">
+        <div class="metric-panel">
+          <h3>Speech Latency</h3>
+          <div class="value" id="metric-tts-latency">0 ms</div>
+          <div class="desc">TTS initialization & speech response synthesis latency.</div>
+        </div>
+        <div class="metric-panel">
+          <h3>VAD Energy</h3>
+          <div class="value" id="metric-vad-energy">0.000</div>
+          <div class="desc">Real-time RMS voice activity detection energy level.</div>
+        </div>
+        <div class="metric-panel">
+          <h3>Whisper STT Latency</h3>
+          <div class="value" id="metric-whisper-latency">-- ms</div>
+          <div class="desc">Transcription duration for last voice request.</div>
+        </div>
+        <div class="metric-panel">
+          <h3>Intent Matching Confidence</h3>
+          <div class="value" id="metric-intent-score">0.00</div>
+          <div class="desc">Levenshtein similarity confidence score for last matched intent.</div>
+        </div>
+        <div class="metric-panel">
+          <h3>Action Exec Latency</h3>
+          <div class="value" id="metric-action-latency">-- ms</div>
+          <div class="desc">Time taken to run the last Command/Action through Action Bus.</div>
+        </div>
+        <div class="metric-panel">
+          <h3>SQLite Memories Count</h3>
+          <div class="value" id="metric-memories-count">--</div>
+          <div class="desc">Total active memories stored in SQLite database.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="dev_console.js"></script>
+</body>
+</html>

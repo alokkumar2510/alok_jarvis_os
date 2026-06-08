@@ -1,0 +1,8 @@
+[build]
+# Redirect build artifacts to a path without spaces to fix windres GNU toolchain issue
+target-dir = "C:\\jarvis_target"
+
+[target.x86_64-pc-windows-gnu]
+# Ensure MinGW tools are discoverable
+linker = "E:\\ALOK PC\\mingw64\\mingw64\\bin\\gcc.exe"
+ar = "E:\\ALOK PC\\mingw64\\mingw64\\bin\\ar.exe"

@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ALOK OS v3</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- External UI Libraries -->
+    <!-- GSAP for core UI motion, spring transitions -->
+    <script src="gsap.min.js"></script>
+    <!-- Lucide for elegant, modern vector icons -->
+    <script src="lucide.min.js"></script>
+    
+    <link rel="stylesheet" href="styles.css" />
+    
+    <!-- CRITICAL: Detect window type BEFORE CSS renders to apply correct body class.
+         Reads ?window=command_center URL param set by Rust show_command_center().
+         Must run synchronously (no defer/async) before first paint. -->
+    <script>
+      (function() {
+        var params = new URLSearchParams(window.location.search);
+        var win = params.get('window');
+        // Also check Tauri synchronous API as fallback
+        if (!win || win === 'main') {
+          try {
+            if (window.__TAURI__) {
+              if (window.__TAURI__.webviewWindow) {
+                var lbl = window.__TAURI__.webviewWindow.getCurrentWebviewWindow().label;
+                if (lbl) win = lbl;
+              } else if (window.__TAURI__.window) {
+                var lbl = window.__TAURI__.window.getCurrentWindow().label;
+                if (lbl) win = lbl;
+              }
+            }
+          } catch(e) {}
+        }
+        var cls = (win === 'command_center') ? 'window-command-center' : 'window-main';
+        document.documentElement.className = cls;
+        // Store for main.js to pick up
+        window._detectedWindowLabel = win || 'main';
+      })();
+    </script>
+    <script type="module" src="main.js" defer></script>
+  </head>
+
+  <body>
+    <!-- Live 120 FPS Background Canvas (Particles & Neural Links) -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Transparent Interactive Overlay -->
+    <div id="overlay-shield">
+      
+      <!-- Subtitles/Speech Output Overlay -->
+      <div id="subtitles-container" class="hidden">
+        <div class="subtitle-indicator">
+          <span class="live-ping"></span>
+          <span id="subtitles-speaker">JARVIS:</span>
+        </div>
+        <span id="subtitles-text">Listening...</span>
+        <button id="close-subtitles-btn" class="close-btn" title="Dismiss speech">&times;</button>
+      </div>
+
+      <!-- Proactive Suggester Toast -->
+      <div id="proactive-toast" class="hidden">
+        <div class="toast-glow"></div>
+        <div class="toast-header">
+          <div class="toast-title-wrapper">
+            <i id="toast-icon" data-lucide="bell" style="width: 16px; height: 16px;"></i>
+            <span id="toast-title">Notification</span>
+          </div>
+          <button id="close-toast-btn" class="close-btn">&times;</button>
+        </div>
+        <div class="toast-body">
+          <p id="toast-message">Suggestion content goes here...</p>
+          <div id="toast-actions" class="toast-actions-row">
+            <button id="toast-accept-btn" class="toast-action-btn primary">Open</button>
+            <button id="toast-decline-btn" class="toast-action-btn secondary">Dismiss</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Ambient Interaction Area (Bottom Right) -->
+      <div id="assistant-container" class="collapsed">
+        
+        <!-- Smart Focus Card (Animates next to Orb on Voice State Change) -->
+        <div id="mini-card" class="hidden">
+          <div class="card-glow"></div>
+          <div class="card-header">
+            <span class="status-badge">
+              <span class="pulse-dot"></span>
+              <span id="status-text">Listening...</span>
+            </span>
+            <button id="close-card-btn" class="close-btn">&times;</button>
+          </div>
+          <div class="card-body">
+            <p id="transcript-preview">"Search for latest projects..."</p>
+            <div class="waveform-container">
+              <canvas id="waveform-canvas"></canvas>
+            </div>
+            <div id="action-feedback" class="action-highlight">Routing request...</div>
+          </div>
+        </div>
+
+        <!-- Ambient Orb Canvas (Pulsing, interactive 3D-feel Canvas-based voice presence) -->
+        <div id="status-bubble" title="Open Command Center">
+          <canvas id="orb-canvas"></canvas>
+        </div>
+
+      </div>
+
+      <!-- Command Center: Full-Screen Futuristic HUD -->
+      <div id="dashboard" class="hidden">
+        
+        <!-- Floating Pill Header Bar (Vision Pro inspired) -->
+        <header id="command-header" data-tauri-drag-region>
+          <div class="header-logo">
+            <span class="logo-title">ALOK<span class="logo-suffix">OS_v3</span></span>
+          </div>
+          
+          <!-- Tab Navigation Pills (No Sidebar) -->
+          <nav class="floating-nav-pill">
+            <button class="nav-tab active" data-tab="control">
+              <i data-lucide="layout-dashboard"></i>
+              <span>Mission Control</span>
+            </button>
+            <button class="nav-tab" data-tab="chat">
+              <i data-lucide="message-square"></i>
+              <span>Dialogue</span>
+            </button>
+            <button class="nav-tab" data-tab="planner">
+              <i data-lucide="git-branch"></i>
+              <span>Planner</span>
+            </button>
+            <button class="nav-tab" data-tab="graph">
+              <i data-lucide="network"></i>
+              <span>Memory Graph</span>
+            </button>
+            <button class="nav-tab" data-tab="settings">
+              <i data-lucide="sliders"></i>
+              <span>System Config</span>
+            </button>
+          </nav>
+
+          <div class="header-actions">
+            <!-- Close button for command center -->
+            <button id="close-dashboard-btn" class="header-btn" title="Collapse Command Center">
+              <i data-lucide="minimize-2"></i>
+            </button>
+          </div>
+        </header>
+
+        <!-- Command Panels Area -->
+        <main id="command-body">
+          
+          <!-- Pane 0: Mission Control -->
+          <div class="tab-pane active" id="pane-control">
+            <div class="mission-control-grid">
+              
+              <!-- Card 1: Neural Memory Network -->
+              <div class="spatial-card" id="card-memory-network">
+                <div class="card-glow"></div>
+                <div class="card-header-mc">
+                  <i data-lucide="network"></i>
+                  <h3>Neural Memory Network</h3>
+                  <span class="badge" id="mc-memory-stats">0 Nodes / 0 Links</span>
+                </div>
+                <div class="card-body-mc graph-container-mc">
+                  <canvas id="control-graph-canvas"></canvas>
+                </div>
+              </div>
+
+              <!-- Card 2: Swarm Coordinator -->
+              <div class="spatial-card" id="card-swarm-states">
+                <div class="card-glow"></div>
+                <div class="card-header-mc">
+                  <i data-lucide="users"></i>
+                  <h3>Swarm Coordinator</h3>
+                  <span class="status-indicator-mc active" id="mc-swarm-status">Swarm Active</span>
+                </div>
+                <div class="card-body-mc swarm-list-mc">
+                  <div class="agent-row" data-agent="BrowserAgent">
+                    <span class="pulse-dot idle"></span>
+                    <span class="agent-name">BrowserAgent</span>
+                    <span class="agent-status">Idle</span>
+                  </div>
+                  <div class="agent-row" data-agent="FileAgent">
+                    <span class="pulse-dot idle"></span>
+                    <span class="agent-name">FileAgent</span>
+                    <span class="agent-status">Idle</span>
+                  </div>
+                  <div class="agent-row" data-agent="MemoryAgent">
+                    <span class="pulse-dot idle"></span>
+                    <span class="agent-name">MemoryAgent</span>
+                    <span class="agent-status">Idle</span>
+                  </div>
+                  <div class="agent-row" data-agent="DeveloperAgent">
+                    <span class="pulse-dot idle"></span>
+                    <span class="agent-name">DeveloperAgent</span>
+                    <span class="agent-status">Idle</span>
+                  </div>
+                  <div class="agent-row" data-agent="ResearchAgent">
+                    <span class="pulse-dot idle"></span>
+                    <span class="agent-name">ResearchAgent</span>
+                    <span class="agent-status">Idle</span>
+                  </div>
+                  <div class="agent-row" data-agent="AutomationAgent">
+                    <span class="pulse-dot idle"></span>
+                    <span class="agent-name">AutomationAgent</span>
+                    <span class="agent-status">Idle</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 3: Hardware Diagnostics -->
+              <div class="spatial-card" id="card-hardware-stats">
+                <div class="card-glow"></div>
+                <div class="card-header-mc">
+                  <i data-lucide="cpu"></i>
+                  <h3>Hardware Telemetry</h3>
+                  <span class="badge" id="mc-battery-status">Battery 100%</span>
+                </div>
+                <div class="card-body-mc metrics-list-mc">
+                  <div class="metric-progress-item">
+                    <div class="metric-info">
+                      <span>CPU Load</span>
+                      <strong id="mc-cpu-val">--%</strong>
+                    </div>
+                    <div class="progress-bar-mc"><div class="fill-mc" id="mc-cpu-fill" style="width: 0%"></div></div>
+                  </div>
+                  <div class="metric-progress-item">
+                    <div class="metric-info">
+                      <span>Memory Overhead</span>
+                      <strong id="mc-ram-val">-- MB</strong>
+                    </div>
+                    <div class="progress-bar-mc"><div class="fill-mc" id="mc-ram-fill" style="width: 0%"></div></div>
+                    <small class="target-mc">Target &lt; 150 MB</small>
+                  </div>
+                  <div class="metric-progress-item">
+                    <div class="metric-info">
+                      <span>Disk Free (C:)</span>
+                      <strong id="mc-disk-val">-- GB</strong>
+                    </div>
+                    <div class="progress-bar-mc"><div class="fill-mc" id="mc-disk-fill" style="width: 0%"></div></div>
+                  </div>
+                  <div class="metric-progress-item">
+                    <div class="metric-info">
+                      <span>Battery Health</span>
+                      <strong id="mc-battery-val">--%</strong>
+                    </div>
+                    <div class="progress-bar-mc"><div class="fill-mc" id="mc-battery-fill" style="width: 0%"></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 4: Intelligence Metrics -->
+              <div class="spatial-card" id="card-intelligence-metrics">
+                <div class="card-glow"></div>
+                <div class="card-header-mc">
+                  <i data-lucide="bar-chart-2"></i>
+                  <h3>Intelligence Metrics</h3>
+                  <span class="badge">Live</span>
+                </div>
+                <div class="card-body-mc metrics-list-mc">
+                  <div class="metric-row">
+                    <span class="metric-label">Wake Word Latency</span>
+                    <span class="metric-value" id="mc-latency-stt">-- ms</span>
+                  </div>
+                  <div class="metric-row">
+                    <span class="metric-label">Action Execution Latency</span>
+                    <span class="metric-value" id="mc-latency-action">-- ms</span>
+                  </div>
+                  <div class="metric-row">
+                    <span class="metric-label">Groq Inference Latency</span>
+                    <span class="metric-value" id="mc-latency-groq">-- ms</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 5: Self Improvement & Habits -->
+              <div class="spatial-card" id="card-learning-progress">
+                <div class="card-glow"></div>
+                <div class="card-header-mc">
+                  <i data-lucide="trending-up"></i>
+                  <h3>Self Improvement</h3>
+                  <span class="badge" id="mc-success-rate">Success Rate: 100%</span>
+                </div>
+                <div class="card-body-mc habits-list-mc scroll-area">
+                  <div class="improvement-stats-row">
+                    <div class="stat-box">
+                      <span class="stat-number" id="mc-corrections-count">0</span>
+                      <span class="stat-label">Corrections Logged</span>
+                    </div>
+                    <div class="stat-box">
+                      <span class="stat-number" id="mc-habits-count">0</span>
+                      <span class="stat-label">Active Habits</span>
+                    </div>
+                  </div>
+                  <h4 class="sub-section-title">Learned Patterns & Aliases</h4>
+                  <div class="habits-entries-mc" id="mc-habits-entries">
+                    <div class="no-habits-mc">No habits recorded yet.</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Card 6: Operations & Swarm Logs -->
+              <div class="spatial-card" id="card-operations-feed">
+                <div class="card-glow"></div>
+                <div class="card-header-mc">
+                  <i data-lucide="terminal"></i>
+                  <h3>Operations Feed</h3>
+                  <button id="mc-clear-log-btn" class="glass-text-btn">Clear</button>
+                </div>
+                <div class="card-body-mc terminal-feed-mc scroll-area" id="mc-terminal-logs">
+                  <div class="log-line system">System initialized. Mission Control active.</div>
+                  <div class="log-line swarm">Swarm coordinator monitoring 6 agents.</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Pane 1: Dialogue Timeline -->
+          <div class="tab-pane" id="pane-chat">
+            <div class="pane-split-layout">
+              <div class="dialogue-scroll-container">
+                <div class="pane-headline">
+                  <h2>Dialogue Log</h2>
+                  <button id="clear-chat-btn" class="glass-text-btn">Purge Session Context</button>
+                </div>
+                <div id="chat-logs" class="scroll-area">
+                  <!-- Conversational bubbles load dynamically -->
+                </div>
+              </div>
+              <div class="dialogue-input-area">
+                <div class="input-glow"></div>
+                <input type="text" id="manual-text-input" placeholder="Type system instruction or request..." autocomplete="off" />
+                <button id="send-command-btn" class="glow-action-btn">
+                  <i data-lucide="arrow-up"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pane 2: Goal Planner Steps -->
+          <div class="tab-pane" id="pane-planner">
+            <div class="pane-headline">
+              <h2>Active Execution Plan</h2>
+              <span class="active-goal-tag" id="active-goal-title">No Active Goal</span>
+            </div>
+            <div class="scroll-area planner-scroll">
+              <div class="planner-card">
+                <div class="planner-progress-wrapper">
+                  <div class="progress-info">
+                    <span>Task Completion</span>
+                    <span class="progress-percentage" id="progress-percentage-text">0%</span>
+                  </div>
+                  <div class="planner-progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+                </div>
+                <ul class="planner-steps" id="planner-steps-list">
+                  <li class="step-empty">No active goal execution list. Say a complex command to trigger the Planner.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pane 3: Interactive Knowledge Graph -->
+          <div class="tab-pane" id="pane-graph">
+            <div class="graph-layout">
+              <div class="graph-canvas-container">
+                <div class="graph-controls">
+                  <div class="search-box">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="graph-search" placeholder="Query entities, attributes, relationships..." />
+                  </div>
+                </div>
+                <!-- Memory Graph is drawn here -->
+                <canvas id="graph-canvas"></canvas>
+              </div>
+              
+              <!-- Entity Inspector Overlay Pane -->
+              <aside class="graph-inspector">
+                <div class="inspector-header">
+                  <i data-lucide="database" class="header-icon"></i>
+                  <h3>Entity Details</h3>
+                </div>
+                <div id="inspector-details" class="inspector-empty">
+                  Select a node in the Memory Graph to inspect metadata, history, and neural links.
+                </div>
+              </aside>
+            </div>
+          </div>
+
+          <!-- Pane 4: System Configurations -->
+          <div class="tab-pane" id="pane-settings">
+            <div class="scroll-area">
+              <div class="pane-headline">
+                <h2>System Configurations</h2>
+              </div>
+              <div class="settings-grid">
+                
+                <!-- Group A: OS Integration -->
+                <div class="settings-group">
+                  <div class="group-header">
+                    <i data-lucide="monitor"></i>
+                    <h3>OS Integration</h3>
+                  </div>
+                  <div class="setting-item">
+                    <div class="item-label">
+                      <span>Launch on Boot</span>
+                      <small>Start ALOK with Windows startup</small>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="startup-toggle" checked />
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                  <div class="setting-item">
+                    <div class="item-label">
+                      <span>Screen OCR Context</span>
+                      <small>Continuous visual semantic capture</small>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="ocr-toggle" checked />
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Group B: AI Intelligence -->
+                <div class="settings-group">
+                  <div class="group-header">
+                    <i data-lucide="cpu"></i>
+                    <h3>AI Reasoning Engine</h3>
+                  </div>
+                  <div class="setting-item column">
+                    <div class="item-label">
+                      <span>Groq API Key</span>
+                      <small>Key stored locally on user device</small>
+                    </div>
+                    <div class="input-wrapper">
+                      <input type="password" id="groq-api-key" placeholder="••••••••••••••••" />
+                      <i data-lucide="key" class="input-icon"></i>
+                    </div>
+                  </div>
+                  <div class="setting-item column">
+                    <div class="item-label">
+                      <span>Inference Model</span>
+                      <small>Default fallback model selection</small>
+                    </div>
+                    <select id="groq-model-select">
+                      <option value="llama3-8b-8192">Llama 3 8B (Fast)</option>
+                      <option value="llama3-70b-8192">Llama 3 70B (High Precision)</option>
+                      <option value="mixtral-8x7b-32768">Mixtral 8x7B (Balanced)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Group C: Speech Synthesis -->
+                <div class="settings-group">
+                  <div class="group-header">
+                    <i data-lucide="volume-2"></i>
+                    <h3>Voice & Synthesis</h3>
+                  </div>
+                  <div class="setting-item column">
+                    <div class="item-label">
+                      <span>Wake Word Sensitivity</span>
+                      <small>Adjust mic trigger threshold</small>
+                    </div>
+                    <div class="range-wrapper">
+                      <input type="range" id="wakeword-sensitivity" min="0" max="1" step="0.05" value="0.75" />
+                      <span class="range-val" id="sensitivity-val">0.75</span>
+                    </div>
+                  </div>
+                  <div class="setting-item column">
+                    <div class="item-label">
+                      <span>TTS Speech Speed</span>
+                      <small>Text-to-speech rendering rate</small>
+                    </div>
+                    <div class="range-wrapper">
+                      <input type="range" id="tts-speed" min="0.5" max="2" step="0.1" value="1.0" />
+                      <span class="range-val" id="speed-val">1.0</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </main>
+
+        <!-- Diagnostics Telemetry Bar (Tesla / Nothing OS inspired) -->
+        <footer id="command-footer">
+          <div class="diag-metric">
+            <span class="label">STATUS</span>
+            <span class="value glow-text" id="diag-voice-status">Idle</span>
+          </div>
+          <div class="diag-metric">
+            <span class="label">MEMORY OVERHEAD</span>
+            <span class="value" id="diag-ram">-- MB</span>
+            <span class="target">TARGET &lt; 150 MB</span>
+          </div>
+          <div class="diag-metric">
+            <span class="label">WAKE LATENCY</span>
+            <span class="value" id="diag-wakeword-latency">-- ms</span>
+            <span class="target">TARGET &lt; 300 ms</span>
+          </div>
+          <div class="diag-metric">
+            <span class="label">SYSTEM THREADS</span>
+            <span class="value green">Online</span>
+          </div>
+          <div class="diag-metric">
+            <span class="label">HEALTH</span>
+            <span class="value green" id="diag-health">100%</span>
+          </div>
+        </footer>
+
+      </div>
+
+    </div>
+  </body>
+</html>
