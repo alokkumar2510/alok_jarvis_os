@@ -545,6 +545,49 @@ pub fn split_chained_commands(resolved_text: &str) -> Vec<String> {
     sub_commands
 }
 
+pub fn resolve_path(relative_prod_path: &str, dev_fallback_path: &str) -> String {
+    // 1. Resolve relative to local AppData
+    let mut appdata_path = None;
+    if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
+        let appdata_dir = std::path::Path::new(&local_appdata).join("alok_jarvis_os");
+        let target_path = appdata_dir.join(relative_prod_path);
+        
+        // If it exists, use it immediately
+        if target_path.exists() {
+            return target_path.to_string_lossy().to_string();
+        }
+        
+        // Store the path to use as a fallback if the developer fallback is also not present
+        appdata_path = Some(target_path);
+    }
+    
+    // 2. Resolve relative to current running executable directory (portable mode)
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let target_path = exe_dir.join(relative_prod_path);
+            if target_path.exists() {
+                return target_path.to_string_lossy().to_string();
+            }
+        }
+    }
+    
+    // 3. Check if developer path exists
+    if std::path::Path::new(dev_fallback_path).exists() {
+        return dev_fallback_path.to_string();
+    }
+    
+    // 4. Default to AppData path (and ensure its parent directories are created)
+    if let Some(path) = appdata_path {
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        return path.to_string_lossy().to_string();
+    }
+    
+    // Final fallback
+    dev_fallback_path.to_string()
+}
+
 pub async fn execute_resolved_command(
     resolved_text: String,
     voice_char: Option<crate::voice::VoiceCharacteristics>,
@@ -1280,9 +1323,8 @@ pub fn process_voice_command(wav_path: &str, app: &AppHandle) -> std::result::Re
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 1. Resolve SQLite db path inside workspace
-    let db_path = "e:\\ALOK PC\\alok_jarvis_os.db";
-    let db = Arc::new(Mutex::new(Database::new(db_path).expect("Failed to initialize SQLite database")));
+    let resolved_db = resolve_path("alok_jarvis_os.db", "e:\\ALOK PC\\alok_jarvis_os.db");
+    let db = Arc::new(Mutex::new(Database::new(&resolved_db).expect("Failed to initialize SQLite database")));
     
     // 2. Initialize core states
     let context = Arc::new(Mutex::new(ConversationContext::new()));

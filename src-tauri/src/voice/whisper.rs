@@ -7,19 +7,19 @@ pub struct WhisperEngine {
 
 impl WhisperEngine {
     pub fn new() -> Self {
-        let bin_path = "e:\\ALOK PC\\bin\\whisper-cli.exe".to_string();
+        let bin_path = crate::resolve_path("bin\\whisper-cli.exe", "e:\\ALOK PC\\bin\\whisper-cli.exe");
         Self { bin_path }
     }
 
     /// Transcribes a 16kHz mono WAV file using the local Whisper subprocess.
     pub fn transcribe(&self, wav_path: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-        let base_model = "e:\\ALOK PC\\models\\ggml-base.bin";
-        let tiny_model = "e:\\ALOK PC\\models\\ggml-tiny.bin";
+        let base_model = crate::resolve_path("models\\ggml-base.bin", "e:\\ALOK PC\\models\\ggml-base.bin");
+        let tiny_model = crate::resolve_path("models\\ggml-tiny.bin", "e:\\ALOK PC\\models\\ggml-tiny.bin");
         
-        let resolved_model = if Path::new(base_model).exists() {
-            base_model.to_string()
+        let resolved_model = if Path::new(&base_model).exists() {
+            base_model
         } else {
-            tiny_model.to_string()
+            tiny_model
         };
 
         if !Path::new(&self.bin_path).exists() {

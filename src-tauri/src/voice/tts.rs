@@ -49,9 +49,9 @@ impl TtsState {
 
 pub fn speak(text: &str) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 1. Load active voice and speed preferences from database
-    let db_path = "e:\\ALOK PC\\alok_jarvis_os.db";
-    let (pref, active_emotion) = if Path::new(db_path).exists() {
-        if let Ok(db) = Database::new(db_path) {
+    let resolved_db = crate::resolve_path("alok_jarvis_os.db", "e:\\ALOK PC\\alok_jarvis_os.db");
+    let (pref, active_emotion) = if Path::new(&resolved_db).exists() {
+        if let Ok(db) = Database::new(&resolved_db) {
             let p = VoicePreferences::load_from_db(&db);
             let emo_str = db.get_setting("voice_active_emotion")
                 .unwrap_or_default()
@@ -206,9 +206,9 @@ fn process_and_play_sentence(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 1. Determine active speech style using SpeechStyleEngine
     let preferences = {
-        let db_path = "e:\\ALOK PC\\alok_jarvis_os.db";
-        if Path::new(db_path).exists() {
-            if let Ok(db) = Database::new(db_path) {
+        let resolved_db = crate::resolve_path("alok_jarvis_os.db", "e:\\ALOK PC\\alok_jarvis_os.db");
+        if Path::new(&resolved_db).exists() {
+            if let Ok(db) = Database::new(&resolved_db) {
                 VoicePreferences::load_from_db(&db)
             } else {
                 VoicePreferences::default_preferences()
@@ -222,17 +222,17 @@ fn process_and_play_sentence(
     let formatted_text = SpeechStyleEngine::format_text_style(text, &style);
 
     // 2. Resolve Piper binary and model paths
-    let bin_dir = "e:\\ALOK PC\\bin\\piper";
-    let bin_path = Path::new(bin_dir).join("piper.exe");
-    let model_dir = "e:\\ALOK PC\\models\\piper";
+    let resolved_bin_path = crate::resolve_path("bin\\piper\\piper.exe", "e:\\ALOK PC\\bin\\piper\\piper.exe");
+    let bin_path = Path::new(&resolved_bin_path);
+    let model_dir = crate::resolve_path("models\\piper", "e:\\ALOK PC\\models\\piper");
     
     let voice_file = if voice.ends_with(".onnx") {
         voice.to_string()
     } else {
         format!("{}.onnx", voice)
     };
-    let model_path = Path::new(model_dir).join(&voice_file);
-    let config_path = Path::new(model_dir).join(format!("{}.json", voice_file));
+    let model_path = Path::new(&model_dir).join(&voice_file);
+    let config_path = Path::new(&model_dir).join(format!("{}.json", voice_file));
 
     // Check if Piper is available locally
     let piper_available = bin_path.exists() && model_path.exists() && config_path.exists();
