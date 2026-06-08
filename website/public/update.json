@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "notes": "ALOK OS release version 0.1.0 with dynamic path virtualization and automatic dependency setup.",
+  "pub_date": "2026-06-08T09:00:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "DWd1...dummy_signature...",
+      "url": "https://github.com/alokkumar2510/alok_jarvis_os/releases/download/v0.1.0/alok_jarvis_os_0.1.0_x64-setup.exe"
+    }
+  }
+}
