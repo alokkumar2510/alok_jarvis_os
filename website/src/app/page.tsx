@@ -3,6 +3,7 @@ import Features from "@/components/Features";
 import Demo from "@/components/Demo";
 import DownloadSection from "@/components/Download";
 import Roadmap from "@/components/Roadmap";
+import Founder from "@/components/Founder";
 import FAQ from "@/components/FAQ";
 import Footer from "@/components/Footer";
 
@@ -24,6 +25,7 @@ export default function Home() {
             <a href="#demo" className="text-text-secondary hover:text-white transition-colors">HUD Console</a>
             <a href="#download" className="text-text-secondary hover:text-white transition-colors">Downloads</a>
             <a href="#roadmap" className="text-text-secondary hover:text-white transition-colors">Roadmap</a>
+            <a href="#founder" className="text-text-secondary hover:text-white transition-colors">Founder</a>
             <a href="#faq" className="text-text-secondary hover:text-white transition-colors">FAQ</a>
           </nav>
 
@@ -46,6 +48,7 @@ export default function Home() {
         <Demo />
         <DownloadSection />
         <Roadmap />
+        <Founder />
         <FAQ />
       </main>
 
