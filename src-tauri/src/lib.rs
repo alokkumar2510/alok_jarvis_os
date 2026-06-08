@@ -1313,6 +1313,170 @@ async fn process_intent(text: String, state: State<'_, AppState>, app: AppHandle
     Ok(outcome.output)
 }
 
+#[derive(serde::Serialize, Clone)]
+pub struct DependencyStatus {
+    pub whisper_cli: bool,
+    pub whisper_model: bool,
+    pub piper_cli: bool,
+    pub piper_model: bool,
+}
+
+#[derive(serde::Serialize, Clone)]
+pub struct SetupProgress {
+    pub step: usize,
+    pub total: usize,
+    pub message: String,
+    pub percent: usize,
+}
+
+#[tauri::command]
+fn check_dependencies() -> DependencyStatus {
+    let whisper_cli_path = resolve_path("bin\\whisper-cli.exe", "e:\\ALOK PC\\bin\\whisper-cli.exe");
+    let whisper_model_path = resolve_path("models\\ggml-tiny.bin", "e:\\ALOK PC\\models\\ggml-tiny.bin");
+    let piper_cli_path = resolve_path("bin\\piper\\piper.exe", "e:\\ALOK PC\\bin\\piper\\piper.exe");
+    let piper_model_path = resolve_path("models\\piper\\en_US-lessac-medium.onnx", "e:\\ALOK PC\\models\\piper\\en_US-lessac-medium.onnx");
+    
+    DependencyStatus {
+        whisper_cli: std::path::Path::new(&whisper_cli_path).exists(),
+        whisper_model: std::path::Path::new(&whisper_model_path).exists()
+            || std::path::Path::new(&resolve_path("models\\ggml-base.bin", "e:\\ALOK PC\\models\\ggml-base.bin")).exists(),
+        piper_cli: std::path::Path::new(&piper_cli_path).exists(),
+        piper_model: std::path::Path::new(&piper_model_path).exists(),
+    }
+}
+
+#[tauri::command]
+async fn download_dependencies(app: tauri::AppHandle) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        let status = check_dependencies();
+        if status.whisper_cli && status.whisper_model && status.piper_cli && status.piper_model {
+            return Ok(());
+        }
+
+        // Ensure AppData directory exists
+        let local_appdata = std::env::var("LOCALAPPDATA")
+            .map_err(|_| "Could not find LOCALAPPDATA directory".to_string())?;
+        let base_dir = std::path::Path::new(&local_appdata).join("alok_jarvis_os");
+        let bin_dir = base_dir.join("bin");
+        let models_dir = base_dir.join("models");
+        let piper_models_dir = models_dir.join("piper");
+
+        std::fs::create_dir_all(&bin_dir).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(&models_dir).map_err(|e| e.to_string())?;
+        std::fs::create_dir_all(&piper_models_dir).map_err(|e| e.to_string())?;
+
+        let temp_dir = std::env::temp_dir();
+        let total_steps = 5;
+        let mut current_step = 1;
+
+        // 1. Download Whisper CLI Zip
+        if !status.whisper_cli {
+            emit_progress(&app, current_step, total_steps, "Downloading speech recognition engine (Whisper CLI)...", 10);
+            let zip_url = "https://github.com/ggml-org/whisper.cpp/releases/download/v1.8.6/whisper-bin-x64.zip";
+            let zip_path = temp_dir.join("whisper-bin-x64.zip");
+            download_file_powershell(zip_url, &zip_path.to_string_lossy())?;
+
+            emit_progress(&app, current_step, total_steps, "Extracting speech recognition engine...", 50);
+            extract_zip_powershell(&zip_path.to_string_lossy(), &bin_dir.to_string_lossy())?;
+            let _ = std::fs::remove_file(zip_path);
+        }
+        current_step += 1;
+
+        // 2. Download Whisper Model
+        if !status.whisper_model {
+            emit_progress(&app, current_step, total_steps, "Downloading speech model (Whisper Tiny)...", 10);
+            let model_url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin";
+            let model_path = models_dir.join("ggml-tiny.bin");
+            download_file_powershell(model_url, &model_path.to_string_lossy())?;
+        }
+        current_step += 1;
+
+        // 3. Download Piper CLI Zip
+        if !status.piper_cli {
+            emit_progress(&app, current_step, total_steps, "Downloading text-to-speech engine (Piper)...", 10);
+            let zip_url = "https://github.com/rhasspy/piper/releases/download/v1.2.0/piper_windows_amd64.zip";
+            let zip_path = temp_dir.join("piper_windows_amd64.zip");
+            download_file_powershell(zip_url, &zip_path.to_string_lossy())?;
+
+            emit_progress(&app, current_step, total_steps, "Extracting text-to-speech engine...", 50);
+            extract_zip_powershell(&zip_path.to_string_lossy(), &bin_dir.to_string_lossy())?;
+            let _ = std::fs::remove_file(zip_path);
+        }
+        current_step += 1;
+
+        // 4. Download Piper Model (ONNX)
+        if !status.piper_model {
+            emit_progress(&app, current_step, total_steps, "Downloading voice model (ONNX)...", 10);
+            let model_url = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx";
+            let model_path = piper_models_dir.join("en_US-lessac-medium.onnx");
+            download_file_powershell(model_url, &model_path.to_string_lossy())?;
+        }
+        current_step += 1;
+
+        // 5. Download Piper Model Config (JSON)
+        if !status.piper_model {
+            emit_progress(&app, current_step, total_steps, "Downloading voice configuration...", 10);
+            let config_url = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json";
+            let config_path = piper_models_dir.join("en_US-lessac-medium.onnx.json");
+            download_file_powershell(config_url, &config_path.to_string_lossy())?;
+        }
+
+        emit_progress(&app, total_steps, total_steps, "Setup complete! Ready to start ALOK OS.", 100);
+        Ok(())
+    }).await.map_err(|e| e.to_string())?
+}
+
+fn emit_progress(app: &tauri::AppHandle, step: usize, total: usize, message: &str, percent: usize) {
+    let _ = app.emit("dependency-setup-status", SetupProgress {
+        step,
+        total,
+        message: message.to_string(),
+        percent,
+    });
+}
+
+fn download_file_powershell(url: &str, target_path: &str) -> Result<(), String> {
+    let ps_script = format!(
+        "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; \
+         $ProgressPreference = 'SilentlyContinue'; \
+         Invoke-WebRequest -Uri '{}' -OutFile '{}' -UseBasicParsing -TimeoutSec 120",
+        url, target_path
+    );
+
+    let status = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-Command", &ps_script])
+        .status()
+        .map_err(|e| format!("Failed to run PowerShell download: {}", e))?;
+
+    if status.success() {
+        if std::path::Path::new(target_path).exists() {
+            Ok(())
+        } else {
+            Err(format!("Download completed but target file not found: {}", target_path))
+        }
+    } else {
+        Err(format!("PowerShell download failed with exit code: {:?}", status.code()))
+    }
+}
+
+fn extract_zip_powershell(zip_path: &str, dest_dir: &str) -> Result<(), String> {
+    let ps_script = format!(
+        "Expand-Archive -Path '{}' -DestinationPath '{}' -Force",
+        zip_path, dest_dir
+    );
+
+    let status = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-Command", &ps_script])
+        .status()
+        .map_err(|e| format!("Failed to run PowerShell extraction: {}", e))?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("PowerShell extraction failed with exit code: {:?}", status.code()))
+    }
+}
+
 // ── Voice Conversation Engine Loop ───────────────────────────────────────
 
 pub fn process_voice_command(wav_path: &str, app: &AppHandle) -> std::result::Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -1452,6 +1616,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            check_dependencies,
+            download_dependencies,
             js_console_log,
             get_system_stats,
             load_settings,

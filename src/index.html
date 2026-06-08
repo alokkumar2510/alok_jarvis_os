@@ -51,6 +51,25 @@
     <!-- Live 120 FPS Background Canvas (Particles & Neural Links) -->
     <canvas id="bg-canvas"></canvas>
 
+    <!-- Setup Overlay (Dependency Downloader) -->
+    <div id="setup-overlay" class="hidden">
+      <div class="setup-container">
+        <div class="setup-header">
+          <div class="logo-title">ALOK<span class="logo-suffix">OS_v3 Setup</span></div>
+          <p>Installing voice & speech recognition engines...</p>
+        </div>
+        <div class="setup-progress-wrapper">
+          <div class="progress-info">
+            <span id="setup-status-text">Initializing setup...</span>
+            <span class="progress-percentage" id="setup-progress-pct">0%</span>
+          </div>
+          <div class="setup-progress-bar"><div class="setup-progress-fill" id="setup-progress-fill" style="width: 0%"></div></div>
+        </div>
+        <div id="setup-detail-text">This runs only once. Please do not close the application.</div>
+      </div>
+    </div>
+
+
     <!-- Transparent Interactive Overlay -->
     <div id="overlay-shield">
       

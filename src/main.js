@@ -201,6 +201,59 @@ let globalTime = 0;
 let mouseX = window.innerWidth / 2;
 let mouseY = window.innerHeight / 2;
 
+async function checkAndSetupDependencies() {
+  try {
+    const status = await invoke('check_dependencies');
+    if (!status.whisper_cli || !status.whisper_model || !status.piper_cli || !status.piper_model) {
+      console.log('Dependencies missing. Showing setup overlay...');
+      const overlay = document.getElementById('setup-overlay');
+      if (overlay) {
+        overlay.classList.remove('hidden');
+        overlay.style.opacity = '1';
+      }
+
+      // Listen for progress updates
+      let setupListener = null;
+      setupListener = await listen('dependency-setup-status', (event) => {
+        const payload = event.payload;
+        const statusText = document.getElementById('setup-status-text');
+        const progressPct = document.getElementById('setup-progress-pct');
+        const progressFill = document.getElementById('setup-progress-fill');
+        
+        if (statusText) statusText.textContent = payload.message;
+        if (progressPct) progressPct.textContent = `${payload.percent}%`;
+        if (progressFill) progressFill.style.width = `${payload.percent}%`;
+      });
+
+      // Call download
+      await invoke('download_dependencies');
+      
+      // Setup complete! Clean up overlay
+      console.log('Setup finished successfully!');
+      if (overlay) {
+        gsap.to(overlay, {
+          opacity: 0,
+          duration: 0.8,
+          ease: 'power2.inOut',
+          onComplete: () => {
+            overlay.classList.add('hidden');
+          }
+        });
+      }
+      if (setupListener && typeof setupListener === 'function') {
+        setupListener();
+      }
+    } else {
+      console.log('All dependencies present.');
+    }
+  } catch (err) {
+    console.error('Error in dependency setup:', err);
+    // Hide overlay in case of error so user isn't stuck
+    const overlay = document.getElementById('setup-overlay');
+    if (overlay) overlay.classList.add('hidden');
+  }
+}
+
 // ==========================================
 // INITIALIZATION
 // ==========================================
@@ -229,7 +282,11 @@ window.addEventListener('DOMContentLoaded', () => {
   
   // Check window label & apply modes
   checkWindowLabel();
+
+  // Run dependency setup checks
+  checkAndSetupDependencies();
 });
+
 
 function initializeDOMElements() {
   assistantContainer = document.getElementById('assistant-container');
