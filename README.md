@@ -29,6 +29,39 @@
 
 ---
 
+## 🌐 Live Deployments
+*   **Official Website:** [jarvis.alokkumarsahu.in](https://jarvis.alokkumarsahu.in) (Landing page and distribution site, hosted on Cloudflare Pages).
+*   **Auto-Updater Endpoint:** `https://jarvis.alokkumarsahu.in/update.json` (Manifest endpoint used by the Tauri desktop client for checking and receiving updates).
+
+---
+
+## 📥 Download & User Guide
+
+For users who want to run **ALOK Jarvis OS** without building it from source, follow the instructions below to download and install the pre-compiled desktop application:
+
+### 1. Download the Installer
+*   **Windows Setup (.exe):** Download [v0.1.0 Setup Installer (x64)](https://github.com/alokkumar2510/alok_jarvis_os/releases/download/v0.1.0/alok_jarvis_os_0.1.0_x64-setup.exe) — *Recommended for standard Windows setup*.
+*   **Windows Bundle (.msi):** Download [v0.1.0 MSI Bundle (x64)](https://github.com/alokkumar2510/alok_jarvis_os/releases/download/v0.1.0/alok_jarvis_os_0.1.0_x64_en-US.msi) — *Ideal for enterprise or custom group policy distribution*.
+*   **Latest Releases:** Access all stable releases on the [GitHub Releases](https://github.com/alokkumar2510/alok_jarvis_os/releases) page.
+*   **SHA-256 Checksum (v0.1.0):** `b07ea0b1b4115a38e1a7b07debf581f0b77d999925f8acb8f39d322b0ba0a822`
+
+### 2. Installation Steps
+1. Run the downloaded installer (`alok_jarvis_os_0.1.0_x64-setup.exe`).
+2. Follow the setup wizard to complete the installation.
+3. Launch **ALOK Jarvis OS** from your desktop or start menu.
+
+### 3. Voice Engines & Local Setup
+*   **Automatic Downloader (Recommended):** On first boot, the application checks for the local voice models. If missing, it will display a setup screen and automatically download and extract Whisper (STT) and Piper (TTS) models directly from Hugging Face. Ensure you have an active internet connection during this initial setup.
+*   **Manual Setup (Optional):**
+    *   **Whisper STT:** Place `whisper-cli.exe` and `ggml-base.bin` in `e:\ALOK PC\bin\` and `e:\ALOK PC\models\`.
+    *   **Piper TTS:** Place `piper.exe` and voice files inside `e:\ALOK PC\bin\piper\` and `e:\ALOK PC\models\piper\`.
+
+### 🖥️ System Requirements
+*   **OS:** Windows 10 / 11 (64-bit).
+*   **Internet:** Needed only for the first boot download sequence (approximately 150MB). Subsequent operations run 100% offline.
+
+---
+
 ## 🏛️ System Architecture
 
 ```mermaid
@@ -89,7 +122,7 @@ alok_jarvis_os/
 
 ---
 
-## 🚀 Get Started in 5 Minutes
+## 💻 Developer Setup: Build from Source
 
 ### 📋 Prerequisites
 1. **Rust & Cargo:** Install via [rustup.rs](https://rustup.rs/).
