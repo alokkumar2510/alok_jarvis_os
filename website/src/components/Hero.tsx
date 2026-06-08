@@ -249,11 +249,11 @@ export default function Hero() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="text-5xl md:text-7xl font-semibold tracking-tight text-white leading-[1.05]"
+              className="text-5xl md:text-7xl font-bold tracking-tight text-white leading-[1.05]"
             >
-              Your Personal <br />
-              <span className="bg-gradient-to-r from-accent-electric via-accent-cyan to-accent-violet bg-clip-text text-transparent">
-                AI Operating System
+              ALOK <span className="bg-gradient-to-r from-accent-electric via-accent-cyan to-accent-violet bg-clip-text text-transparent">JARVIS OS</span><br />
+              <span className="text-2xl md:text-4xl font-light text-text-secondary tracking-wide block mt-3">
+                Your Personal AI Operating System
               </span>
             </motion.h1>
 
